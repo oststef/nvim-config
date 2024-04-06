@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, for help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -441,7 +441,36 @@ require('lazy').setup({
       end, { desc = '[S]earch [N]eovim files' })
     end,
   },
+  { -- Autoformatting
+    'nvimtools/none-ls.nvim',
+    event = 'VeryLazy',
+    opts = function()
+      local augroup = vim.api.nvim_create_augroup('LspFormatting', {})
+      local null_ls = require 'null-ls'
 
+      local opts = {
+        sources = {
+          null_ls.builtins.formatting.prettierd,
+        },
+        on_attach = function(client, bufnr)
+          if client.supports_method 'textDocument/formatting' then
+            vim.api.nvim_clear_autocmds {
+              group = augroup,
+              buffer = bufnr,
+            }
+            vim.api.nvim_create_autocmd('BufWritePre', {
+              group = augroup,
+              buffer = bufnr,
+              callback = function()
+                vim.lsp.buf.format { bufnr = bufnr }
+              end,
+            })
+          end
+        end,
+      }
+      return opts
+    end,
+  },
   { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
@@ -595,6 +624,7 @@ require('lazy').setup({
         gopls = {},
 
         tsserver = {
+          root_dir = require('lspconfig').util.root_pattern('tsconfig.json', 'package.json', 'jsconfig.json'),
           settings = {
             completion = {
               completeFunctionCalls = true,
@@ -606,9 +636,16 @@ require('lazy').setup({
             'vue',
             'javascriptreact',
             'typescriptreact',
+            'javascript.jsx',
+            'typescript.jsx',
           },
+          diagnostics = { disable = true },
           single_file_support = true,
         },
+        eslint = {},
+        prettierd = {},
+
+        graphql = {},
 
         gleam = {},
 
@@ -622,7 +659,7 @@ require('lazy').setup({
                 callSnippet = 'Replace',
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
+              diagnostics = { disable = { 'missing-fields' } },
             },
           },
         },
